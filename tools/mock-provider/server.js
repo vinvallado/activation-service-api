@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const calls = new Map();
 const scenarioCalls = new Map();
 let requestCount = 0;
+let activeScenario = 'success';
 const issuer = process.env.JWT_ISSUER || 'http://mock-provider:9099';
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
 const publicJwk = keys.publicKey.export({ format: 'jwk' });
@@ -29,14 +30,32 @@ http.createServer((request, response) => {
   if (request.method === 'GET' && url.pathname === '/dev/token') {
     return json(response, 200, { access_token: token(url.searchParams.get('clientId') || 'local-client', url.searchParams.get('scope') || 'activation:read activation:write'), token_type: 'Bearer', expires_in: 3600 });
   }
-  if (request.method === 'GET' && url.pathname === '/stats') return json(response, 200, { requests: requestCount, idempotencyKeys: Object.fromEntries(calls) });
+  if (request.method === 'GET' && url.pathname === '/stats') return json(response, 200, { requests: requestCount, activeScenario, idempotencyKeys: Object.fromEntries(calls) });
+  if (request.method === 'POST' && url.pathname === '/control/scenario') {
+    let body = '';
+    request.on('data', chunk => { body += chunk; });
+    request.on('end', () => {
+      try {
+        const scenario = JSON.parse(body).scenario;
+        const allowed = ['success', 'bad-request', 'always-500', 'server-error-once', 'rate-limited', 'rate-limited-once', 'unavailable', 'unavailable-once', 'timeout'];
+        if (!allowed.includes(scenario)) return json(response, 400, { error: 'invalid_scenario' });
+        activeScenario = scenario;
+        return json(response, 200, { activeScenario });
+      } catch { return json(response, 400, { error: 'invalid_payload' }); }
+    });
+    return;
+  }
+  if (request.method === 'POST' && url.pathname === '/control/reset') {
+    activeScenario = 'success'; requestCount = 0; calls.clear(); scenarioCalls.clear();
+    return json(response, 200, { activeScenario, requests: requestCount });
+  }
   if (request.method !== 'POST' || url.pathname !== '/provider/v1/activate') return json(response, 404, { error: 'not_found' });
 
   requestCount += 1;
   const key = request.headers['idempotency-key'];
   if (!key) return json(response, 400, { error: 'missing_idempotency_key' });
   calls.set(key, (calls.get(key) || 0) + 1);
-  const scenario = request.headers['x-provider-scenario'] || 'success';
+  const scenario = request.headers['x-provider-scenario'] || activeScenario;
   const scenarioKey = `${scenario}:${key}`;
   const scenarioAttempt = (scenarioCalls.get(scenarioKey) || 0) + 1;
   scenarioCalls.set(scenarioKey, scenarioAttempt);

@@ -40,6 +40,8 @@ Health checks liveness/readiness e métricas Prometheus são expostos pelo Actua
 
 Importe `postman/environments/local.postman_environment.json` e as collections em `postman/collections`. Execute primeiro **Obter token local**. As collections não armazenam tokens ou credenciais.
 
+Para validar a integração assíncrona, use a collection **Activation Provider - Scenarios** nesta ordem: **Reset mock state**, escolha um cenário em **Set ...**, crie uma solicitação na collection JWT, consulte a solicitação até o estado terminal e use **Statistics** para conferir as chamadas e as chaves de idempotência recebidas pelo provedor local. O controle de cenário existe apenas no simulador de desenvolvimento e não faz parte do contrato da API.
+
 ## Operação em produção
 
 Em aumento simultâneo de latência da API, banco e provedor, investigue traces e percentis antes de concluir uma causa: pool de conexões, locks, queries lentas, saturação HTTP e chamadas remotas dentro de transações são hipóteses distintas. Use logs estruturados, métricas de latência/erros do provedor, `EXPLAIN ANALYZE` e locks do PostgreSQL para confirmar a origem. Uma correção deve ser validada contra baseline, carga controlada, rollout gradual e plano de rollback.

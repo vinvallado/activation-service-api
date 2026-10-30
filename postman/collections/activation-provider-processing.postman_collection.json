@@ -2,6 +2,12 @@
   "info":{"name":"Activation Provider - Scenarios","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
   "item":[
     {"name":"Health","request":{"method":"GET","url":"{{providerBaseUrl}}/health"}},
+    {"name":"Reset mock state","request":{"method":"POST","url":"{{providerBaseUrl}}/control/reset"}},
+    {"name":"Set transient 503 once","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"scenario\": \"unavailable-once\"\n}"},"url":"{{providerBaseUrl}}/control/scenario"}},
+    {"name":"Set permanent 400","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"scenario\": \"bad-request\"\n}"},"url":"{{providerBaseUrl}}/control/scenario"}},
+    {"name":"Set rate limit once","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"scenario\": \"rate-limited-once\"\n}"},"url":"{{providerBaseUrl}}/control/scenario"}},
+    {"name":"Set sustained 500","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"scenario\": \"always-500\"\n}"},"url":"{{providerBaseUrl}}/control/scenario"}},
+    {"name":"Set timeout","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"scenario\": \"timeout\"\n}"},"url":"{{providerBaseUrl}}/control/scenario"}},
     {"name":"Statistics","request":{"method":"GET","url":"{{providerBaseUrl}}/stats"}},
     {"name":"Success","request":{"method":"POST","header":[{"key":"Idempotency-Key","value":"postman-success"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{}"},"url":"{{providerBaseUrl}}/provider/v1/activate"}},
     {"name":"Retryable 503","request":{"method":"POST","header":[{"key":"Idempotency-Key","value":"postman-retry"},{"key":"X-Provider-Scenario","value":"unavailable-once"}],"url":"{{providerBaseUrl}}/provider/v1/activate"}},
