@@ -11,6 +11,8 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Supplier;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,21 +22,34 @@ public class HttpActivationProviderClient implements ActivationProviderClient {
     private final CircuitBreaker circuitBreaker;
     private final URI endpoint;
     private final Duration requestTimeout;
+    private final MeterRegistry meterRegistry;
+    private final String scenario;
     public HttpActivationProviderClient(CircuitBreakerRegistry registry, @Value("${activation.provider.base-url:http://127.0.0.1:9099}") String baseUrl,
-                                        @Value("${activation.provider.timeout:PT3S}") Duration requestTimeout) {
+                                        @Value("${activation.provider.timeout:PT3S}") Duration requestTimeout,
+                                        @Value("${activation.provider.scenario:}") String scenario, MeterRegistry meterRegistry) {
         this.client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build(); this.circuitBreaker=registry.circuitBreaker("activationProvider");
-        this.endpoint=URI.create(baseUrl+"/provider/v1/activate"); this.requestTimeout=requestTimeout;
+        this.endpoint=URI.create(baseUrl+"/provider/v1/activate"); this.requestTimeout=requestTimeout; this.scenario=scenario; this.meterRegistry=meterRegistry;
     }
     @Override public ProviderResult activate(ActivationRequestEntity request, String correlationId) {
         Supplier<ProviderResult> decorated=CircuitBreaker.decorateSupplier(circuitBreaker, () -> invoke(request, correlationId));
-        try { return decorated.get(); } catch (Exception exception) { return new ProviderResult(Outcome.TRANSIENT_FAILURE,null,"Falha temporária na integração"); }
+        var sample=Timer.start(meterRegistry);
+        try {
+            ProviderResult result=decorated.get();
+            meterRegistry.counter("activation.provider.calls", "outcome", result.outcome().name()).increment();
+            return result;
+        } catch (Exception exception) {
+            meterRegistry.counter("activation.provider.calls", "outcome", Outcome.TRANSIENT_FAILURE.name()).increment();
+            return new ProviderResult(Outcome.TRANSIENT_FAILURE,null,"Falha temporária na integração");
+        } finally { sample.stop(meterRegistry.timer("activation.provider.duration")); }
     }
     private ProviderResult invoke(ActivationRequestEntity request, String correlationId) {
         try {
             String body="{\"requestId\":\""+request.getId()+"\",\"customerId\":\""+request.getCustomerId()+"\",\"productCode\":\""+request.getProductCode()+"\"}";
-            var httpRequest=HttpRequest.newBuilder(endpoint).timeout(requestTimeout).header("Content-Type","application/json")
+            var builder=HttpRequest.newBuilder(endpoint).timeout(requestTimeout).header("Content-Type","application/json")
                     .header("Idempotency-Key",request.getId().toString()).header("X-Correlation-Id",correlationId == null ? "" : correlationId)
-                    .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+                    .POST(HttpRequest.BodyPublishers.ofString(body));
+            if (!scenario.isBlank()) builder.header("X-Provider-Scenario",scenario);
+            var httpRequest=builder.build();
             var response=client.send(httpRequest,HttpResponse.BodyHandlers.discarding()); int code=response.statusCode();
             if(code >= 200 && code < 300) return new ProviderResult(Outcome.SUCCESS,null,null);
             if(code == 400) return new ProviderResult(Outcome.PERMANENT_FAILURE,null,"O provedor recusou a ativação");
