@@ -15,6 +15,17 @@ public class ActivationTaskClaimRepositoryImpl implements ActivationTaskClaimRep
     public ActivationTaskClaimRepositoryImpl(JdbcTemplate jdbc) { this.jdbc=jdbc; }
     @Override @Transactional
     public Optional<ClaimedTask> claimNext(Instant now, Instant leaseUntil) {
+        jdbc.update("""
+            UPDATE activation_service.activation_tasks
+            SET status='PENDING', claim_token=NULL, lease_until=NULL, next_attempt_at=?, updated_at=?,
+                last_error=COALESCE(last_error, 'Lease expirada; tarefa recuperada')
+            WHERE status='PROCESSING' AND lease_until < ?
+            """, Timestamp.from(now), Timestamp.from(now), Timestamp.from(now));
+        jdbc.update("""
+            UPDATE activation_service.activation_requests r SET status='PENDING', updated_at=?
+            FROM activation_service.activation_tasks t
+            WHERE t.request_id=r.id AND t.status='PENDING' AND t.updated_at=?
+            """, Timestamp.from(now), Timestamp.from(now));
         var rows=jdbc.query("""
             SELECT id, request_id, attempts, correlation_id FROM activation_service.activation_tasks
             WHERE status = 'PENDING' AND next_attempt_at <= ?
