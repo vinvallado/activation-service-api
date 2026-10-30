@@ -1,0 +1,10 @@
+{
+  "info":{"name":"Activation Provider - Scenarios","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "item":[
+    {"name":"Health","request":{"method":"GET","url":"{{providerBaseUrl}}/health"}},
+    {"name":"Statistics","request":{"method":"GET","url":"{{providerBaseUrl}}/stats"}},
+    {"name":"Success","request":{"method":"POST","header":[{"key":"Idempotency-Key","value":"postman-success"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{}"},"url":"{{providerBaseUrl}}/provider/v1/activate"}},
+    {"name":"Retryable 503","request":{"method":"POST","header":[{"key":"Idempotency-Key","value":"postman-retry"},{"key":"X-Provider-Scenario","value":"unavailable-once"}],"url":"{{providerBaseUrl}}/provider/v1/activate"}},
+    {"name":"Permanent 400","request":{"method":"POST","header":[{"key":"Idempotency-Key","value":"postman-failure"},{"key":"X-Provider-Scenario","value":"bad-request"}],"url":"{{providerBaseUrl}}/provider/v1/activate"}}
+  ]
+}

@@ -2,6 +2,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 
 const calls = new Map();
+const scenarioCalls = new Map();
 let requestCount = 0;
 const issuer = process.env.JWT_ISSUER || 'http://mock-provider:9099';
 const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
@@ -36,10 +37,16 @@ http.createServer((request, response) => {
   if (!key) return json(response, 400, { error: 'missing_idempotency_key' });
   calls.set(key, (calls.get(key) || 0) + 1);
   const scenario = request.headers['x-provider-scenario'] || 'success';
+  const scenarioKey = `${scenario}:${key}`;
+  const scenarioAttempt = (scenarioCalls.get(scenarioKey) || 0) + 1;
+  scenarioCalls.set(scenarioKey, scenarioAttempt);
   if (scenario === 'bad-request') return json(response, 400, { error: 'invalid_product' });
   if (scenario === 'server-error' || scenario === 'always-500') return json(response, 500, { error: 'temporary_failure' });
+  if (scenario === 'server-error-once' && scenarioAttempt === 1) return json(response, 500, { error: 'temporary_failure' });
   if (scenario === 'rate-limited') return json(response, 429, { error: 'too_many_requests' }, { 'retry-after': '3' });
+  if (scenario === 'rate-limited-once' && scenarioAttempt === 1) return json(response, 429, { error: 'too_many_requests' }, { 'retry-after': '3' });
   if (scenario === 'unavailable') return json(response, 503, { error: 'unavailable' }, { 'retry-after': new Date(Date.now() + 3000).toUTCString() });
+  if (scenario === 'unavailable-once' && scenarioAttempt === 1) return json(response, 503, { error: 'unavailable' }, { 'retry-after': new Date(Date.now() + 3000).toUTCString() });
   if (scenario === 'timeout') return setTimeout(() => json(response, 200, { activated: true }), 10000);
   return json(response, 200, { activated: true, idempotencyKey: key });
 }).listen(9099, '0.0.0.0');

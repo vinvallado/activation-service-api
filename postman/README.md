@@ -1,0 +1,5 @@
+# Collections Postman
+
+Selecione o environment `Local activation service` e execute primeiro `Obter token local`.
+
+Use a collection **Activation API - JWT** para criar, consultar e listar solicitações autenticadas. A collection **Activation Provider - Scenarios** demonstra as respostas determinísticas do provedor local. Nenhum token é versionado: ele é obtido em tempo de execução e permanece somente no environment local do Postman.

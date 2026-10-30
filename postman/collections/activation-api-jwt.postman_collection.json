@@ -1,0 +1,9 @@
+{
+  "info":{"name":"Activation API - JWT","schema":"https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "item":[
+    {"name":"Obter token local","request":{"method":"GET","url":"{{providerBaseUrl}}/dev/token?clientId=postman-client&scope=activation%3Aread%20activation%3Awrite"},"event":[{"listen":"test","script":{"exec":["pm.test('token emitido', () => pm.response.to.have.status(200));","pm.environment.set('accessToken', pm.response.json().access_token);"]}}]},
+    {"name":"Criar solicitação","request":{"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"},{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"externalId\": \"POSTMAN-{{$timestamp}}\",\n  \"customerId\": \"CUST-10001\",\n  \"productCode\": \"INTERNET-500\"\n}"},"url":"{{baseUrl}}/api/v1/requests"},"event":[{"listen":"test","script":{"exec":["pm.test('criado', () => pm.expect(pm.response.code).to.be.oneOf([200,201]));","pm.environment.set('requestId', pm.response.json().id);"]}}]},
+    {"name":"Consultar solicitação","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/v1/requests/{{requestId}}"}},
+    {"name":"Listar solicitações","request":{"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":"{{baseUrl}}/api/v1/requests?page=0&size=20"}}
+  ]
+}
