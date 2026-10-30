@@ -46,3 +46,6 @@ security:
     issuer: ${JWT_ISSUER:http://mock-provider:9099}
     jwk-set-uri: ${JWT_JWK_SET_URI:http://mock-provider:9099/.well-known/jwks.json}
     audience: ${JWT_AUDIENCE:activation-service-api}
+  limits:
+    max-body-bytes: ${MAX_BODY_BYTES:65536}
+    requests-per-minute: ${RATE_LIMIT_PER_MINUTE:120}
