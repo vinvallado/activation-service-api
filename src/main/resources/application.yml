@@ -41,3 +41,8 @@ resilience4j:
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
         permitted-number-of-calls-in-half-open-state: 2
+security:
+  jwt:
+    issuer: ${JWT_ISSUER:http://mock-provider:9099}
+    jwk-set-uri: ${JWT_JWK_SET_URI:http://mock-provider:9099/.well-known/jwks.json}
+    audience: ${JWT_AUDIENCE:activation-service-api}

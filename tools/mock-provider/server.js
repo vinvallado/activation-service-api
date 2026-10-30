@@ -1,7 +1,20 @@
 const http = require('node:http');
+const crypto = require('node:crypto');
 
 const calls = new Map();
 let requestCount = 0;
+const issuer = process.env.JWT_ISSUER || 'http://mock-provider:9099';
+const keys = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+const publicJwk = keys.publicKey.export({ format: 'jwk' });
+publicJwk.kid = 'local-development-key'; publicJwk.use = 'sig'; publicJwk.alg = 'RS256';
+const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+function token(clientId, scope) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = encode({ alg: 'RS256', typ: 'JWT', kid: publicJwk.kid });
+  const payload = encode({ iss: issuer, aud: 'activation-service-api', sub: clientId, client_id: clientId, scope, iat: now, exp: now + 3600 });
+  const signature = crypto.sign('RSA-SHA256', Buffer.from(`${header}.${payload}`), keys.privateKey).toString('base64url');
+  return `${header}.${payload}.${signature}`;
+}
 
 function json(response, status, body, headers = {}) {
   response.writeHead(status, { 'content-type': 'application/json', ...headers });
@@ -11,6 +24,10 @@ function json(response, status, body, headers = {}) {
 http.createServer((request, response) => {
   const url = new URL(request.url, 'http://localhost');
   if (request.method === 'GET' && url.pathname === '/health') return json(response, 200, { status: 'UP' });
+  if (request.method === 'GET' && url.pathname === '/.well-known/jwks.json') return json(response, 200, { keys: [publicJwk] });
+  if (request.method === 'GET' && url.pathname === '/dev/token') {
+    return json(response, 200, { access_token: token(url.searchParams.get('clientId') || 'local-client', url.searchParams.get('scope') || 'activation:read activation:write'), token_type: 'Bearer', expires_in: 3600 });
+  }
   if (request.method === 'GET' && url.pathname === '/stats') return json(response, 200, { requests: requestCount, idempotencyKeys: Object.fromEntries(calls) });
   if (request.method !== 'POST' || url.pathname !== '/provider/v1/activate') return json(response, 404, { error: 'not_found' });
 
