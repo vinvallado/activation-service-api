@@ -25,4 +25,10 @@ public class ActivationTaskEntity {
         this.id=id; this.request=request; this.status=ActivationTaskStatus.PENDING; this.nextAttemptAt=now;
         this.createdAt=now; this.updatedAt=now; this.correlationId=correlationId;
     }
+    public UUID getId(){return id;}
+    public ActivationRequestEntity getRequest(){return request;}
+    public ActivationTaskStatus getStatus(){return status;}
+    public int getAttempts(){return attempts;}
+    public UUID getClaimToken(){return claimToken;}
+    public String getCorrelationId(){return correlationId;}
 }
