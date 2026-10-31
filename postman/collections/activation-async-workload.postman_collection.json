@@ -1,0 +1,24 @@
+{
+  "info": {"name": "Activation API - Five Minute Async Workload", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8080"},
+    {"key": "providerBaseUrl", "value": "http://127.0.0.1:9099"},
+    {"key": "accessToken", "value": ""},
+    {"key": "workloadIndex", "value": "0"}
+  ],
+  "item": [
+    {"name": "Prepare workload", "item": [
+      {"name": "Obtain workload token", "request": {"method": "GET", "url": "{{providerBaseUrl}}/dev/token?clientId=postman-workload&scope=activation%3Aread%20activation%3Awrite%20activation%3Ametrics"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('token emitido', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('accessToken', pm.response.json().access_token);"]}}]},
+      {"name": "Reset provider state", "request": {"method": "POST", "url": "{{providerBaseUrl}}/control/reset"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('mock reiniciado', () => pm.response.to.have.status(200));"]}}]},
+      {"name": "Configure product scenarios", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"products\": {\n    \"FIBER-100\": \"success\",\n    \"MOBILE-50\": \"unavailable-once\",\n    \"TV-PLUS\": \"rate-limited-once\",\n    \"LEGACY-PLAN\": \"bad-request\",\n    \"SATELLITE-20\": \"timeout\"\n  }\n}"}, "url": "{{providerBaseUrl}}/control/products"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('cenários configurados', () => pm.response.to.have.status(200));"]}}]}
+    ]},
+    {"name": "Workload", "item": [
+      {"name": "Dispatch async activation", "event": [{"listen": "prerequest", "script": {"exec": ["const products = ['FIBER-100', 'MOBILE-50', 'TV-PLUS', 'LEGACY-PLAN', 'SATELLITE-20'];", "const index = Number(pm.collectionVariables.get('workloadIndex') || 0);", "pm.variables.set('workloadProduct', products[index % products.length]);", "pm.variables.set('workloadExternalId', `LOAD-${Date.now()}-${index}`);", "pm.collectionVariables.set('workloadIndex', index + 1);"]}}, {"listen": "test", "script": {"exec": ["pm.test('solicitação aceita', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));", "if (pm.response.code === 201) pm.collectionVariables.set('lastRequestId', pm.response.json().id);"]}}], "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"externalId\": \"{{workloadExternalId}}\",\n  \"customerId\": \"LOAD-CUSTOMER-{{workloadProduct}}\",\n  \"productCode\": \"{{workloadProduct}}\"\n}"}, "url": "{{baseUrl}}/api/v1/requests"}}
+    ]},
+    {"name": "Results", "item": [
+      {"name": "List workload requests", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": "{{baseUrl}}/api/v1/requests?page=0&size=100"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('lista disponível', () => pm.response.to.have.status(200));", "pm.test('execução gerou solicitações', () => pm.expect(pm.response.json().totalElements).to.be.above(0));"]}}]},
+      {"name": "Prometheus metrics after workload", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}], "url": "{{baseUrl}}/actuator/prometheus"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('métricas autorizadas', () => pm.response.to.have.status(200));", "pm.test('latência do provedor registrada', () => pm.expect(pm.response.text()).to.include('activation_provider_duration');", "pm.test('chamadas do provedor registradas', () => pm.expect(pm.response.text()).to.include('activation_provider_calls');"]}}]},
+      {"name": "Provider statistics after workload", "request": {"method": "GET", "url": "{{providerBaseUrl}}/stats"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('estatísticas disponíveis', () => pm.response.to.have.status(200));", "pm.test('provedor recebeu chamadas', () => pm.expect(pm.response.json().requests).to.be.above(0));"]}}]}
+    ]}
+  ]
+}
