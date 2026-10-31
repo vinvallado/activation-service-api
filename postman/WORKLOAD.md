@@ -14,7 +14,7 @@ Execute a pasta **Prepare workload** uma única vez. Ela emite um JWT com os esc
 
 ## Execução de cinco minutos
 
-No Collection Runner, selecione apenas a pasta **Workload**. Configure `300` iterações e `1000 ms` de atraso entre requisições. Essa configuração gera uma solicitação por segundo durante aproximadamente cinco minutos, alternando os cinco produtos.
+No menu de três pontos da pasta **Workload**, use **Run folder**. No Collection Runner, confirme que a origem é a pasta **Workload**, configure `300` iterações e `1000 ms` de atraso entre requisições. Essa configuração gera uma solicitação por segundo durante aproximadamente cinco minutos, alternando os cinco produtos. Não execute a collection inteira: isso também repetiria preparação e resultados em cada iteração.
 
 Após o Runner terminar, execute a pasta **Results**. Ela apresenta a listagem das solicitações, as métricas Prometheus e as estatísticas do mock. As métricas verificadas são contagem e duração de chamadas ao provedor, além das métricas padrão da JVM e HTTP expostas pelo Actuator.
 

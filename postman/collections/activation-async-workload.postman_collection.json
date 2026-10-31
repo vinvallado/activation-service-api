@@ -8,8 +8,8 @@
   ],
   "item": [
     {"name": "Prepare workload", "item": [
-      {"name": "Obtain workload token", "request": {"method": "GET", "url": "{{providerBaseUrl}}/dev/token?clientId=postman-workload&scope=activation%3Aread%20activation%3Awrite%20activation%3Ametrics"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('token emitido', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('accessToken', pm.response.json().access_token);"]}}]},
-      {"name": "Reset provider state", "request": {"method": "POST", "url": "{{providerBaseUrl}}/control/reset"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('mock reiniciado', () => pm.response.to.have.status(200));"]}}]},
+      {"name": "Obtain workload token", "request": {"method": "GET", "url": "{{providerBaseUrl}}/dev/token?clientId=postman-workload&scope=activation%3Aread%20activation%3Awrite%20activation%3Ametrics"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('token emitido', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('accessToken', pm.response.json().access_token);", "if (pm.environment.name) { pm.environment.set('accessToken', pm.response.json().access_token); }"]}}]},
+      {"name": "Reset provider state", "request": {"method": "POST", "url": "{{providerBaseUrl}}/control/reset"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('mock reiniciado', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('workloadIndex', '0');"]}}]},
       {"name": "Configure product scenarios", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"products\": {\n    \"FIBER-100\": \"success\",\n    \"MOBILE-50\": \"unavailable-once\",\n    \"TV-PLUS\": \"rate-limited-once\",\n    \"LEGACY-PLAN\": \"bad-request\",\n    \"SATELLITE-20\": \"timeout\"\n  }\n}"}, "url": "{{providerBaseUrl}}/control/products"}, "event": [{"listen": "test", "script": {"exec": ["pm.test('cenários configurados', () => pm.response.to.have.status(200));"]}}]}
     ]},
     {"name": "Workload", "item": [
